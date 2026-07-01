@@ -10,14 +10,16 @@ public class BillingCalculatorService {
     private static final int LITRES_PER_PERSON_DAY = 10; // Each person gets 10L daily [cite: 15]
 
     public BillingResult calculateBill(BillRequestedEvent event) {
+        validateEvent(event);
+
         // 1. Determine base person count from apartment type [cite: 14]
-        int basePeople = event.getApartmentType().equals("2") ? 3 : 5; 
+        int basePeople = "2".equals(event.getApartmentType()) ? 3 : 5;
         int baseWaterAllocation = basePeople * LITRES_PER_PERSON_DAY * DAYS_IN_MONTH; // e.g., 900L or 1500L [cite: 15]
 
         // 2. Parse corporate-to-borewell allocation ratios [cite: 28]
         String[] ratioParts = event.getWaterRatio().split(":");
-        double corpRatio = Double.parseDouble(ratioParts[0]);
-        double boreRatio = Double.parseDouble(ratioParts[1]);
+        double corpRatio = Double.parseDouble(ratioParts[0].trim());
+        double boreRatio = Double.parseDouble(ratioParts[1].trim());
         double totalRatioParts = corpRatio + boreRatio;
 
         // Split total base consumption using the exact ratio values [cite: 16]
@@ -38,6 +40,35 @@ public class BillingCalculatorService {
         long totalCalculatedCost = Math.round(baseCost + tankerCost);
 
         return new BillingResult(totalWaterConsumed, totalCalculatedCost);
+    }
+
+    private void validateEvent(BillRequestedEvent event) {
+        if (event == null) {
+            throw new IllegalArgumentException("Billing request must not be null.");
+        }
+
+        if (!"2".equals(event.getApartmentType()) && !"3".equals(event.getApartmentType())) {
+            throw new IllegalArgumentException("Apartment type must be either '2' or '3'.");
+        }
+
+        if (event.getWaterRatio() == null || event.getWaterRatio().isBlank()) {
+            throw new IllegalArgumentException("Water ratio must be in the format 'corporation:borewell' with positive numeric values.");
+        }
+
+        String[] ratioParts = event.getWaterRatio().split(":");
+        if (ratioParts.length != 2) {
+            throw new IllegalArgumentException("Water ratio must be in the format 'corporation:borewell' with positive numeric values.");
+        }
+
+        try {
+            double corporationRatio = Double.parseDouble(ratioParts[0].trim());
+            double borewellRatio = Double.parseDouble(ratioParts[1].trim());
+            if (corporationRatio <= 0 || borewellRatio <= 0) {
+                throw new IllegalArgumentException("Water ratio must be in the format 'corporation:borewell' with positive numeric values.");
+            }
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Water ratio must be in the format 'corporation:borewell' with positive numeric values.", ex);
+        }
     }
 
     // Process excess tanker water requirements utilizing a step-down slab breakdown [cite: 20, 21, 22, 23]

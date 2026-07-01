@@ -1,10 +1,21 @@
 package com.example.water.apartment;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "apartments")
 public class Apartment {
+    @Id
     private String id;
     private String type; // "2" or "3"
     private String waterRatio; // "Corporation:Borewell"
     private int totalGuests;
+
+    protected Apartment() {
+        // Required by JPA
+    }
 
     public Apartment(String id, String type, String waterRatio) {
         this.id = id;
